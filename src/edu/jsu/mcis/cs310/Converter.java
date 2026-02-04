@@ -2,6 +2,9 @@ package edu.jsu.mcis.cs310;
 
 import com.github.cliftonlabs.json_simple.*;
 import com.opencsv.*;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.List;
 
 public class Converter {
     
@@ -77,9 +80,46 @@ public class Converter {
         String result = "{}"; // default return value; replace later!
         
         try {
-        
-            // INSERT YOUR CODE HERE
-            
+            // Read CSV
+            CSVReader reader = new CSVReader(new StringReader(csvString));
+            List<String[]> rows = reader.readAll();
+            reader.close();
+
+            // Create JSON containers
+            JsonObject root = new JsonObject();
+            JsonArray prodNums = new JsonArray();
+            JsonArray colHeadings = new JsonArray();
+            JsonArray data = new JsonArray();
+
+            // Header row
+            String[] header = rows.get(0);
+            for (int i = 0; i < header.length; i++) {
+                colHeadings.add(header[i]);
+            }
+
+            // Data rows
+            for (int i = 1; i < rows.size(); i++) {
+                String[] row = rows.get(i);
+
+                // ProdNum
+                prodNums.add(row[0]);
+
+                JsonArray dataRow = new JsonArray();
+                dataRow.add(row[1]);                       // Title
+                dataRow.add(Integer.parseInt(row[2]));     // Season
+                dataRow.add(Integer.parseInt(row[3]));     // Episode
+                dataRow.add(row[4]);                       // Stardate
+                dataRow.add(row[5]);                       // OriginalAirdate
+                dataRow.add(row[6]);                       // RemasteredAirdate
+
+                data.add(dataRow);
+            }
+
+            root.put("ProdNums", prodNums);
+            root.put("ColHeadings", colHeadings);
+            root.put("Data", data);
+
+            result = Jsoner.serialize(root);
         }
         catch (Exception e) {
             e.printStackTrace();
@@ -95,9 +135,46 @@ public class Converter {
         String result = ""; // default return value; replace later!
         
         try {
-            
-            // INSERT YOUR CODE HERE
-            
+            // Read JSON
+            JsonObject root = Jsoner.deserialize(jsonString, new JsonObject());
+
+            JsonArray prodNums = (JsonArray) root.get("ProdNums");
+            JsonArray colHeadings = (JsonArray) root.get("ColHeadings");
+            JsonArray dataRows = (JsonArray) root.get("Data");
+
+            // CSV Writer
+            StringWriter sw = new StringWriter();
+            CSVWriter writer = new CSVWriter(sw);
+
+            // Header row
+            String[] header = new String[colHeadings.size()];
+            for (int i = 0; i < colHeadings.size(); i++) {
+                header[i] = colHeadings.get(i).toString();
+            }
+            writer.writeNext(header);
+
+            // Data rows
+            for (int i = 0; i < dataRows.size(); i++) {
+                JsonArray dataRow = (JsonArray) dataRows.get(i);
+                String[] row = new String[7];
+
+                row[0] = prodNums.get(i).toString();
+                row[1] = dataRow.get(0).toString();
+                row[2] = dataRow.get(1).toString();
+
+                // Pad Episode to 2 digits
+                int episode = Integer.parseInt(dataRow.get(2).toString());
+                row[3] = String.format("%02d", episode);
+
+                row[4] = dataRow.get(3).toString();
+                row[5] = dataRow.get(4).toString();
+                row[6] = dataRow.get(5).toString();
+
+                writer.writeNext(row);
+            }
+
+            writer.close();
+            result = sw.toString();
         }
         catch (Exception e) {
             e.printStackTrace();
